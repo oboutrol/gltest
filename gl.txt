@@ -1,0 +1,93 @@
+#include <GL/freeglut.h>
+#include <GL/gl.h>
+
+void renderFunction()
+{
+    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glColor3f(1.0, 1.0, 1.0);
+    glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
+    glBegin(GL_POLYGON);
+        glVertex2f(-0.5, -0.5);
+        glVertex2f(-0.5, 0.5);
+        glVertex2f(0.5, 0.5);
+        glVertex2f(0.5, -0.5);
+    glEnd();
+    glFlush();
+}
+int main(int argc, char** argv)
+{
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_SINGLE);
+    glutInitWindowSize(500,500);
+    glutInitWindowPosition(100,100);
+    glutCreateWindow("OpenGL - First window demo");
+    glutDisplayFunc(renderFunction);
+    glutMainLoop();    
+    return 0;
+}
+
+#include <stdio.h>
+#include <libusb-1.0/libusb.h>
+
+/*
+ Compile with -  gcc gamepad_test.c -o gamepad_test -lusb-1.0 -std=c11
+*/
+
+#define VENDOR_ID 0x0e8f
+#define PRODUCT_ID 0x0003
+
+int main() {
+
+	//initialize libusb
+	int initReturn = libusb_init(NULL);
+
+	if(initReturn < 0) {
+		printf("libusb initialization error!\n");
+		return 1;
+	}
+
+	//find device
+	static struct libusb_device_handle *usbDevice = NULL;
+	usbDevice = libusb_open_device_with_vid_pid(NULL, VENDOR_ID, PRODUCT_ID);
+
+	if(!usbDevice) {
+		printf("Cannot find device!\n");
+		return 1;
+	}
+
+	libusb_detach_kernel_driver(usbDevice, 0);
+	
+	initReturn = libusb_set_configuration(usbDevice, 1);
+
+	if(initReturn < 0) {
+		printf("Set configuration error!\n");
+		return 1;
+	}
+
+	initReturn = libusb_claim_interface(usbDevice, 0);
+
+	if(initReturn < 0) {
+		printf("Claim interface error!\n");
+		return 1;
+	}
+
+	unsigned char data[1024]="\0";
+	int size;
+
+	while(1) {
+    //read data :*
+		int ret = libusb_bulk_transfer(usbDevice,0x81,data,0x0008,&size,1000);
+		for(int i=0; i<size; i++) {
+			printf("%02x ", (unsigned char)(data[i]));
+		}
+
+		printf("\n");
+	}
+
+	libusb_release_interface(usbDevice, 0);
+	libusb_close(usbDevice);
+	libusb_exit(NULL);
+	
+	return 0;
+}
